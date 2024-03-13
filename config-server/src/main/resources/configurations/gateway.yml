@@ -14,16 +14,15 @@ spring:
       discovery:
         locator:
           enabled: true
-      mvc:
-        routes:
-          - id: student-service
-            uri: lb://student-service
-            predicates:
-              - Path=/api/v1/students/**
-          - id: school-service
-            uri: lb://school-service
-            predicates:
-              - Path=/api/v1/schools/**
+      routes:
+        - id: student-service
+          uri: lb://student-service
+          predicates:
+            - Path=/api/v1/students/**
+        - id: school-service
+          uri: lb://school-service
+          predicates:
+            - Path=/api/v1/schools/**
 
 management:
   tracing:
