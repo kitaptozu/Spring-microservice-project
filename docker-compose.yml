@@ -75,7 +75,7 @@ services:
       EUREKA_INSTANCE_HOSTNAME: "school-service"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery:9090/eureka"
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin:9411/api/v2/spans"
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5432/school_db"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5433/school_db"
       SPRING_DATASOURCE_USERNAME: "postgres"
       SPRING_DATASOURCE_PASSWORD: "postgres"
       SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
@@ -99,7 +99,7 @@ services:
       EUREKA_INSTANCE_HOSTNAME: "student-service"
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery:9090/eureka"
       MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin:9411/api/v2/spans"
-      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5432/student_db"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5433/student_db"
       SPRING_DATASOURCE_USERNAME: "postgres"
       SPRING_DATASOURCE_PASSWORD: "postgres"
       SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
@@ -111,7 +111,8 @@ services:
   postgresdb:
     image: postgres:15.1
     ports:
-      - "5432:5432"
+      - "5433:5433"
+    command: -p 5433
     container_name: postgresdb
     environment:
       POSTGRES_USER: "postgres"
