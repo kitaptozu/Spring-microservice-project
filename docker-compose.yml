@@ -1,14 +1,140 @@
-version: '3.8'
+version: '3.9'
 
 services:
+  config-server:
+    build:
+      context: ./config-server
+      dockerfile: Dockerfile
+    image: config-server
+    container_name: config-server
+    healthcheck:
+      test: "curl --fail --silent localhost:9292/actuator/health | grep UP || exit 1"
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    ports:
+      - "9292:9292"
+    networks:
+      - micro-network
+
+  discovery:
+    build:
+      context: ./discovery
+      dockerfile: Dockerfile
+    image: discovery
+    container_name: discovery
+    healthcheck:
+      test: "curl --fail --silent localhost:9090/actuator/health | grep UP || exit 1"
+      interval: 2s
+      timeout: 3s
+      retries: 5
+      start_period: 2s
+    depends_on:
+      config-server:
+        condition: service_healthy
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:9292"
+      EUREKA_INSTANCE_HOSTNAME: "discovery"
+    ports:
+      - "9090:9090"
+    networks:
+      - micro-network
+
+  gateway:
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    image: gateway
+    container_name: gateway
+    depends_on:
+      - config-server
+      - discovery
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:9292"
+      EUREKA_INSTANCE_HOSTNAME: "gateway"
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery:9090/eureka"
+    ports:
+      - "9191:9191"
+    networks:
+      - micro-network
+
+  school-service:
+    build:
+      context: ./school
+      dockerfile: Dockerfile
+    image: school-service
+    container_name: school-service
+    depends_on:
+      - postgresdb
+      - config-server
+      - discovery
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:9292"
+      EUREKA_INSTANCE_HOSTNAME: "school-service"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery:9090/eureka"
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5432/school_db"
+      SPRING_DATASOURCE_USERNAME: "postgres"
+      SPRING_DATASOURCE_PASSWORD: "postgres"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+    ports:
+      - "8181:8181"
+    networks:
+      - micro-network
+
+  student-service:
+    build:
+      context: ./student
+      dockerfile: Dockerfile
+    image: student-service
+    container_name: student-service
+    depends_on:
+      - postgresdb
+      - config-server
+      - discovery
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:9292"
+      EUREKA_INSTANCE_HOSTNAME: "student-service"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery:9090/eureka"
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: "http://zipkin:9411/api/v2/spans"
+      SPRING_DATASOURCE_URL: "jdbc:postgresql://postgresdb:5432/student_db"
+      SPRING_DATASOURCE_USERNAME: "postgres"
+      SPRING_DATASOURCE_PASSWORD: "postgres"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+    ports:
+      - "8282:8282"
+    networks:
+      - micro-network
+
+  postgresdb:
+    image: postgres:15.1
+    ports:
+      - "5432:5432"
+    container_name: postgresdb
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_DB: "school_db"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - micro-network
+
   zipkin:
     image: openzipkin/zipkin
     container_name: zipkin
     ports:
       - "9411:9411"
     networks:
-      - zipkin
+      - micro-network
+
+volumes:
+  postgres-data:
+    name: microservices-postgres-data
 
 networks:
-  zipkin:
+  micro-network:
     driver: bridge
+    name: microservices-network
